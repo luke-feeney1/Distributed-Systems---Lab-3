@@ -1,0 +1,59 @@
+{
+  "version": "1.0.0",
+  "title": "Backend Pod Failure Resilience Test",
+  "description": "Terminate backend pods to test how client resilience patterns (circuit breaker and retry) handle the failure",
+  "tags": [
+    "kubernetes",
+    "pod-failure",
+    "resilience"
+  ],
+  "steady-state-hypothesis": {
+    "title": "Client service is healthy and responsive",
+    "probes": [
+      {
+        "name": "client-responds-to-requests",
+        "type": "probe",
+        "tolerance": 200,
+        "provider": {
+          "type": "http",
+          "url": "http://localhost:8082/health",
+          "timeout": 5
+        }
+      }
+    ]
+  },
+  "method": [
+    {
+      "type": "action",
+      "name": "terminate-backend-pod",
+      "provider": {
+        "type": "python",
+        "module": "chaosk8s.pod.actions",
+        "func": "terminate_pods",
+        "arguments": {
+          "label_selector": "app=backend",
+          "ns": "default"
+        }
+      },
+      "pauses": {
+        "after": 10
+      }
+    }
+  ],
+  "rollbacks": [
+    {
+      "type": "action",
+      "name": "ensure-backend-deployment-exists",
+      "provider": {
+        "type": "python",
+        "module": "chaosk8s.deployment.actions",
+        "func": "scale_deployment",
+        "arguments": {
+          "name": "backend-deployment",
+          "replicas": 1,
+          "ns": "default"
+        }
+      }
+    }
+  ]
+}
